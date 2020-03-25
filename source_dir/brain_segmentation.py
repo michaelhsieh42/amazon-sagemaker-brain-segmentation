@@ -45,26 +45,30 @@ def train(current_host, channel_input_dirs, hyperparameters, hosts, num_cpus, nu
     
     # Locate compressed training/validation data
     train_dir = channel_input_dirs['train']
-    validation_dir = channel_input_dirs['test']
-    train_tars = os.listdir(train_dir)
-    validation_tars = os.listdir(validation_dir)
-    # Extract compressed image / mask pairs locally
-    for train_tar in train_tars:
-        with tarfile.open(os.path.join(train_dir, train_tar), 'r:gz') as f:
-            f.extractall(train_dir)
-    for validation_tar in validation_tars:
-        with tarfile.open(os.path.join(validation_dir, validation_tar), 'r:gz') as f:
-            f.extractall(validation_dir)
+    validation_dir = channel_input_dirs['validation']
+    train_mask_dir = channel_input_dirs['train_annotation']
+    validation_mask_dir = channel_input_dirs['validation_annotation']
+#     train_tars = os.listdir(train_dir)
+#     validation_tars = os.listdir(validation_dir)
+#     # Extract compressed image / mask pairs locally
+#     for train_tar in train_tars:
+#         with tarfile.open(os.path.join(train_dir, train_tar), 'r:gz') as f:
+#             f.extractall(train_dir)
+#     for validation_tar in validation_tars:
+#         with tarfile.open(os.path.join(validation_dir, validation_tar), 'r:gz') as f:
+#             f.extractall(validation_dir)
     
     # Define custom iterators on extracted data locations.
     train_iter = DataLoaderIter(
-        train_dir,
+        train_dir,  # will loop into train_dir + "_annotation" to find masks.
+        train_mask_dir,
         num_classes,
         batch_size,
         True,
         num_workers)
     validation_iter = DataLoaderIter(
         validation_dir,
+        validation_mask_dir,
         num_classes,
         batch_size,
         False,
@@ -84,7 +88,7 @@ def train(current_host, channel_input_dirs, hyperparameters, hosts, num_cpus, nu
     dice_metric = mx.metric.CustomMetric(feval=avg_dice_coef_metric, allow_extra_outputs=True)
     logging.info("Starting model fit")
     
-    # Start training the model
+    # Start training the model  (will throw system error with framework_version=1.0.0)
     net.fit(
         train_data=train_iter,
         eval_data=validation_iter,

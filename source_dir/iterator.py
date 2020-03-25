@@ -23,25 +23,44 @@ class ImageWithMaskDataset(dataset.Dataset):
         transform = lambda data, label: (data.astype(np.float32)/255, label)
     """
 
-    def __init__(self, root, num_classes, transform=None):
+    def __init__(self, root, root_mask, num_classes, transform=None):
         self._root = os.path.expanduser(root)
+        self._root_mask = os.path.expanduser(root_mask)
         self._transform = transform
         self._exts = ['.jpg', '.jpeg', '.png']
         self._list_images(self._root)
         self.num_classes = num_classes
 
     def _list_images(self, root):
+        #root_mask = '%s_annotation' % root
         images = collections.defaultdict(dict)
+#         print('root dir is %s' % root)
+#         print(os.listdir(root))
+#         print('root_mask dir is %s' % self._root_mask)
+#         print(os.listdir(self._root_mask))
         for filename in sorted(os.listdir(root)):
+#             print(filename)
             name, ext = os.path.splitext(filename)
-            mask_flag = name.endswith("_mask")
+            #mask_flag = name.endswith("_mask")
             if ext.lower() not in self._exts:
                 continue
-            if not mask_flag:
-                images[name]["base"] = filename
-            else:
-                name = name[:-5]  # to remove '_mask'
-                images[name]["mask"] = filename
+            
+            ## File checking with isfile or exists always return false for symlinks?
+#             tmp_fname=os.path.join(root, filename)
+            tmp_mask_fname=os.path.join(self._root_mask, filename)
+            assert os.path.exists(tmp_mask_fname), "Mask image %s does not exist." % tmp_mask_fname
+#             if not os.path.exists(tmp_fname):
+#                 print("Image %s does not exist." % tmp_fname)
+#             if not os.path.exists(tmp_mask_fname):
+#                 print("Mask image %s does not exist." % tmp_mask_fname)
+            
+            images[name]["base"] = filename
+            images[name]["mask"] = filename            
+#             if not mask_flag:
+#                 images[name]["base"] = filename
+#             else:
+#                 name = name[:-5]  # to remove '_mask'
+#                 images[name]["mask"] = filename
         self._image_list = list(images.values())
 
     def one_hot(self, Y):
@@ -64,7 +83,7 @@ class ImageWithMaskDataset(dataset.Dataset):
         base = nd.transpose(mx.image.imread(base_filepath, 0), (2, 0, 1)).astype(np.float32)
         assert 'mask' in self._image_list[idx], "Couldn't find mask image for: " + \
             self._image_list[idx]["base"]
-        mask_filepath = os.path.join(self._root, self._image_list[idx]["mask"])
+        mask_filepath = os.path.join(self._root_mask, self._image_list[idx]["mask"])
         mask = nd.transpose(mx.image.imread(mask_filepath, 0), (2, 0, 1)).astype(np.float32)
         mask = mask.astype(np.float32)
         one_hot_mask = nd.zeros((self.num_classes,) + mask.shape[1:], dtype=np.float32)
@@ -117,10 +136,10 @@ class DataLoaderIter(mx.io.DataIter):
     num_workers : int
         Number of sub-processes to spawn for loading data. Default 0 means none.
     """
-    def __init__(self, root, num_classes, batch_size, shuffle=False, num_workers=0):
+    def __init__(self, root, root_mask, num_classes, batch_size, shuffle=False, num_workers=0):
 
         self.batch_size = batch_size
-        self.dataset = ImageWithMaskDataset(root=root, num_classes=num_classes)
+        self.dataset = ImageWithMaskDataset(root=root, root_mask=root_mask, num_classes=num_classes)
         if mx.__version__ == "0.11.0":
             self.dataloader = mx.gluon.data.DataLoader(
                 self.dataset, batch_size=batch_size, shuffle=shuffle, last_batch='rollover')
