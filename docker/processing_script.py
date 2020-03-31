@@ -36,7 +36,7 @@ def process_mris(images, masks, target_dir, mask_dir):
             mri_rotate = np.rot90(mris[i]).astype(np.uint8)
             segmentation_rotate = np.rot90(segmentations[i]).astype(np.uint8)
             
-            print('%s: %d' % (new_fname, mri_rotate.max()))
+            # print('%s: %d' % (new_fname, mri_rotate.max()))
             
             imageio.imsave(os.path.join(target_dir, new_fname), mri_rotate)
             imageio.imsave(os.path.join(mask_dir, new_fname), segmentation_rotate)
